@@ -1,7 +1,7 @@
 //! Integration test: parse the real SIE4 export from Visma Administration 2000
 //! and assert it produces no Error-severity diagnostics.
 
-use sie_lsp::{decode_cp437, parse, Severity};
+use sie_parser::{decode_cp437, parse, Severity};
 
 #[test]
 fn sample_parses_without_errors() {
@@ -39,8 +39,8 @@ fn sample_company_name_decoded_from_cp437() {
     // Expect the Swedish "Övningsbolaget AB" round-tripped from CP437.
     let first_field = &fnamn.fields[0];
     let text = match &first_field.value {
-        sie_lsp::FieldValue::Quoted { text } => text.as_str(),
-        sie_lsp::FieldValue::Bare { text } => text.as_str(),
+        sie_parser::FieldValue::Quoted { text } => text.as_str(),
+        sie_parser::FieldValue::Bare { text } => text.as_str(),
         _ => panic!("unexpected field value"),
     };
     assert_eq!(text, "Övningsbolaget AB");

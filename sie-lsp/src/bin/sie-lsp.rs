@@ -3,9 +3,9 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
 
-use sie_lsp::{
-    all_labels, label_info, offset_to_line_col, parse, semantic_tokens,
-    FieldKind, Item, Severity, SemanticTokenKind, TOKEN_TYPES,
+use sie_lsp::{semantic_tokens, SemanticTokenKind, TOKEN_TYPES};
+use sie_parser::{
+    all_labels, label_info, offset_to_line_col, parse, FieldKind, Item, ParseOutput, Severity,
 };
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
@@ -279,7 +279,7 @@ fn field_position_in_prefix(prefix: &str) -> Option<(&str, usize)> {
     Some((label, field_index))
 }
 
-fn build_semantic_tokens(text: &str, out: &sie_lsp::ParseOutput) -> Vec<SemanticToken> {
+fn build_semantic_tokens(text: &str, out: &ParseOutput) -> Vec<SemanticToken> {
     let tokens = semantic_tokens(out);
     let mut result: Vec<SemanticToken> = Vec::with_capacity(tokens.len());
     let mut prev_line = 0u32;

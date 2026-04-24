@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use sie_lsp::{diagnostics as dc, parse, read_file};
+use sie_parser::{diagnostics as dc, parse, read_file};
 
 #[test]
 fn every_diagnostic_code_fires_at_least_once() {

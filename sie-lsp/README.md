@@ -11,12 +11,18 @@ This crate produces two binaries:
   server that provides diagnostics, hover, completion, and semantic highlighting
   in any LSP-capable editor.
 
+Parsing, the CP437 codec, the label schema, and the typed `SieDocument` model
+live in the sibling [`sie-parser`](../sie-parser) crate — depend on that one
+directly if you just need to read SIE files without the LSP layer.
+
 Try the companion Neovim plugin [`sie.nvim`](https://github.com/t4t5/sie.nvim).
 
 ## Install
 
+From the workspace root:
+
 ```sh
-cargo install --path .
+cargo install --path sie-lsp
 ```
 
 This puts `sie` and `sie-lsp` on your `$PATH`.

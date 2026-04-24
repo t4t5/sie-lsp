@@ -1,10 +1,10 @@
 default: build
 
 build:
-    cargo build --release
+    cargo build --release --workspace
 
 test:
-    cargo test
+    cargo test --workspace
 
 run file:
     cargo run --bin sie -- validate {{file}}
@@ -16,10 +16,10 @@ lsp:
     cargo run --bin sie-lsp
 
 install:
-    cargo install --path .
+    cargo install --path sie-lsp
 
 fmt:
-    cargo fmt
+    cargo fmt --all
 
 clippy:
-    cargo clippy --all-targets -- -D warnings
+    cargo clippy --workspace --all-targets -- -D warnings
