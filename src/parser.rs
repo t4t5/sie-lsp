@@ -552,6 +552,17 @@ fn token_to_field(t: &Token) -> Field {
 }
 
 fn validate_field(tok: &Token, spec: &FieldSpec, diags: &mut Vec<Diagnostic>) {
+    // Exporters (Fortnox, others) write `""` as a positional placeholder for an
+    // absent optional field so they can reach later positional fields. Per spec
+    // §11 such fields are optional; treat an empty quoted slot as "not specified"
+    // rather than a malformed value. ObjectList is excluded — empty there is `{}`.
+    if !spec.required
+        && tok.kind == TokenKind::Quoted
+        && tok.text.is_empty()
+        && !matches!(spec.kind, FieldKind::ObjectList)
+    {
+        return;
+    }
     match &spec.kind {
         FieldKind::String | FieldKind::Raw => { /* always ok */ }
         FieldKind::Integer => {
@@ -791,6 +802,24 @@ mod tests {
         } else {
             panic!();
         }
+    }
+
+    #[test]
+    fn empty_quoted_placeholder_on_optional_field() {
+        // Fortnox-style: `""` as a placeholder for optional transdate/transtext
+        // so the later optional `quantity` slot can be written positionally.
+        // Expected: no errors — optional + empty quoted = absent.
+        let src = "#FLAGGA 0\n#VER A 1 20210101\n{\n#TRANS 1930 {} -91.05 \"\" \"\" 0\n#TRANS 6230 {} 91.05 \"\" \"\" 0\n}\n";
+        let out = parse_ok(src);
+        assert!(errs(&out).is_empty(), "{:#?}", out.diagnostics);
+    }
+
+    #[test]
+    fn empty_quoted_still_errors_on_required_field() {
+        // `verdate` on #VER is required — `""` there must still be a bad-date.
+        let src = "#FLAGGA 0\n#VER A 1 \"\" \"Text\"\n{\n}\n";
+        let out = parse_ok(src);
+        assert!(errs(&out).contains(&dc::BAD_DATE_FORMAT));
     }
 
     #[test]

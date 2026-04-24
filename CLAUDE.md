@@ -67,6 +67,12 @@ Every `Span { byte_offset, byte_len }` in the AST uses byte offsets into the ori
 ### 10. Fixtures are committed intact
 `tests/fixtures/sample.se` is a copy of the real Visma export — CP437 bytes and CRLF line endings preserved. **Do not** convert to UTF-8 or LF; the whole point is to exercise the real-file path. Editors may offer to "fix" it — decline.
 
+### 11. Empty quoted string = absent on optional fields
+In `validate_field` (`parser.rs`), an `""` token in an **optional** position short-circuits validation — no `bad-date-format` / `bad-amount` / `bad-integer` / `bad-enum-value` is emitted. Rationale: SIE fields are positional with no way to "skip" an intermediate optional field. Real exporters (notably Fortnox) write `""` as a placeholder so they can reach later positional fields like `quantity`. Example: `#TRANS 1930 {} -91.05 "" "" 0` — the two `""` placeholders stand in for `transdate` and `transtext` so `quantity=0` lands in slot 6. The spec (§11 #TRANS.1) makes those fields optional; §5.10 mandates `YYYYMMDD` for dates but is silent on the empty-placeholder case. Every SIE reader in the wild accepts it, so we do too.
+- Required fields still error on `""` (e.g. `#VER`'s `verdate`, `#GEN`'s `date`). The lenience is gated on `!spec.required`.
+- `FieldKind::ObjectList` is excluded — empty there is `{}`, not `""`.
+- Tests: `empty_quoted_placeholder_on_optional_field` and `empty_quoted_still_errors_on_required_field` in `parser.rs`.
+
 ## Adding a new label
 
 Spec amendments or vendor extensions:
@@ -105,7 +111,7 @@ Don't implement these without re-checking with the user — they were deliberate
 Before considering a change complete:
 
 ```sh
-just test         # 34 unit + 3 integration, all must pass
+just test         # all must pass
 just build        # release build of both binaries
 ./target/release/sie validate tests/fixtures/sample.se   # exit 0
 ./target/release/sie validate tests/fixtures/broken.se   # exit 1
