@@ -1,0 +1,24 @@
+[package]
+name = "sie-lsp"
+version = "0.1.0"
+edition = "2024"
+description = "Language server and CLI for the SIE 4B bookkeeping file format"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.44", features = ["full"] }
+tower-lsp = "0.20"
+
+[lib]
+name = "sie_lsp"
+path = "src/lib.rs"
+
+[[bin]]
+name = "sie"
+path = "src/main.rs"
+
+[[bin]]
+name = "sie-lsp"
+path = "src/bin/sie-lsp.rs"
