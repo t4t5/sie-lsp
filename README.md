@@ -1,6 +1,6 @@
-# sie-lsp
+# SIE LSP
 
-A language server and CLI for the [SIE 4B file format](https://sie.se/format/) — the
+A language server and CLI for the [SIE file format](https://sie.se/format/) — the
 Swedish standard for exchanging bookkeeping data between accounting programs.
 
 This crate produces two binaries:
@@ -77,7 +77,3 @@ just test       # all unit + integration tests (includes the 4080-line sample)
 just run docs/SIE4\ example\ file.SE
 just lsp        # run the LSP on stdio for manual debugging
 ```
-
-## License
-
-Dual-licensed under MIT or Apache-2.0.
