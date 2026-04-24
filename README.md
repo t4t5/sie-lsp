@@ -1,6 +1,6 @@
 # sie-lsp
 
-A language server and CLI for the [SIE 4B file format](../docs/spec.md) — the
+A language server and CLI for the [SIE 4B file format](https://sie.se/format/) — the
 Swedish standard for exchanging bookkeeping data between accounting programs.
 
 This crate produces two binaries:
@@ -11,8 +11,7 @@ This crate produces two binaries:
   server that provides diagnostics, hover, completion, and semantic highlighting
   in any LSP-capable editor.
 
-The companion Neovim plugin lives alongside this crate at
-[`../sie.nvim`](../sie.nvim).
+Try the companion Neovim plugin [`sie.nvim`](https://github.com/t4t5/sie.nvim).
 
 ## Install
 
