@@ -1,8 +1,8 @@
 //! Semantic token emission. The LSP server advertises this legend and
 //! delta-encodes the tokens returned by [`tokens_for`] on the wire.
 
-use crate::labels;
-use crate::types::{FieldValue, Item, ParseOutput, SemanticToken, SemanticTokenKind};
+use sie_parser::labels;
+use sie_parser::types::{FieldValue, Item, ParseOutput, Span};
 
 /// The token-type legend advertised by the LSP server, in order.
 /// Indices into this array are used as the `token_type` field in the
@@ -15,6 +15,38 @@ pub const TOKEN_TYPES: &[&str] = &[
     "operator",   // 4 — { }
     "macro",      // 5 — unknown label (distinctive color)
 ];
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SemanticTokenKind {
+    Label,
+    String,
+    Number,
+    Date,
+    Enum,
+    Brace,
+    Unknown,
+}
+
+impl SemanticTokenKind {
+    /// Index into the legend exposed via `TOKEN_TYPES`.
+    pub fn legend_index(&self) -> u32 {
+        match self {
+            SemanticTokenKind::Label => 0,
+            SemanticTokenKind::String => 1,
+            SemanticTokenKind::Number => 2,
+            SemanticTokenKind::Enum => 3,
+            SemanticTokenKind::Brace => 4,
+            SemanticTokenKind::Unknown => 5,
+            SemanticTokenKind::Date => 2, // render as number; no date type in LSP standard legend
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct SemanticToken {
+    pub span: Span,
+    pub kind: SemanticTokenKind,
+}
 
 pub fn tokens_for(out: &ParseOutput) -> Vec<SemanticToken> {
     let mut toks = Vec::new();

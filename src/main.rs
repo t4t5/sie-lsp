@@ -4,7 +4,7 @@ use std::io::Read;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use sie_lsp::{offset_to_line_col, parse, read_file, Severity};
+use sie_parser::{offset_to_line_col, parse, read_file, Severity};
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().collect();

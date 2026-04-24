@@ -6,7 +6,7 @@ description = "Language server and CLI for the SIE 4B bookkeeping file format"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-serde = { version = "1.0", features = ["derive"] }
+sie-parser = { path = "../sie-parser" }
 serde_json = "1.0"
 tokio = { version = "1.44", features = ["full"] }
 tower-lsp = "0.20"
