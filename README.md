@@ -3,24 +3,24 @@
 A language server and CLI for the [SIE file format](https://sie.se/format/) — the
 Swedish standard for exchanging bookkeeping data between accounting programs.
 
-This cargo workspace contains two crates:
+This crate produces two binaries:
 
-- [**`sie-parser`**](sie-parser/) — parser, CP437 codec, label schema, and typed
-  `SieDocument` model. No LSP dependencies. Depend on this if you're building
-  any SIE-consuming tool and don't need the language server.
-- [**`sie-lsp`**](sie-lsp/) — produces two binaries:
-  - **`sie`** — a tiny CLI that parses a `.se` / `.si` / `.sie` file and
-    reports diagnostics, or emits the parsed structure as JSON.
-  - **`sie-lsp`** — a [Language Server Protocol](https://microsoft.github.io/language-server-protocol/)
-    server providing diagnostics, hover, completion, and semantic highlighting
-    in any LSP-capable editor.
+- **`sie`** — a tiny CLI that parses a `.se` / `.si` / `.sie` file and reports
+  diagnostics, or emits the parsed structure as JSON.
+- **`sie-lsp`** — a [Language Server Protocol](https://microsoft.github.io/language-server-protocol/)
+  server providing diagnostics, hover, completion, and semantic highlighting
+  in any LSP-capable editor.
+
+The pure parsing layer (parser, CP437 codec, label schema, typed
+`SieDocument` model) lives in the sibling [**`sie-parser`**](https://github.com/t4t5/sie-parser)
+crate — depend on that directly if you don't need the language server.
 
 Try the companion Neovim plugin [`sie.nvim`](https://github.com/t4t5/sie.nvim).
 
 ## Install
 
 ```sh
-cargo install --path sie-lsp
+cargo install --path .
 ```
 
 This puts `sie` and `sie-lsp` on your `$PATH`.
@@ -77,7 +77,21 @@ assumes the editor has already decoded the file.
 
 ```sh
 just build      # cargo build --release
-just test       # all unit + integration tests (includes the 4080-line sample)
-just run docs/SIE4\ example\ file.SE
+just test       # all unit + integration tests
+just run path/to/file.se
 just lsp        # run the LSP on stdio for manual debugging
 ```
+
+Local development uses a `[patch.crates-io]` override in `Cargo.toml`
+that points `sie-parser` at the sibling
+`../sie-parser` checkout. Clone both repos as siblings:
+
+```
+sie/
+├── sie-parser/
+└── sie-lsp/
+```
+
+If you only have this repo cloned, comment out the `[patch.crates-io]`
+section in `Cargo.toml` to fall back to the published `sie-parser` on
+crates.io.
