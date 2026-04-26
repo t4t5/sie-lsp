@@ -25,8 +25,3 @@ path = "src/main.rs"
 [[bin]]
 name = "sie-lsp"
 path = "src/bin/sie-lsp.rs"
-
-# For local development against the in-repo sie-parser crate.
-# Remove or comment out before publishing to crates.io.
-[patch.crates-io]
-sie-parser = { path = "../sie-parser" }

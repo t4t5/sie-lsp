@@ -823,11 +823,12 @@ dependencies = [
 [[package]]
 name = "sie-parser"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08212746c60e8e9df234c298fc718fe26b3880947a4dede84dfb48615ba72e38"
 dependencies = [
  "anyhow",
  "rust_decimal",
  "serde",
- "serde_json",
 ]
 
 [[package]]

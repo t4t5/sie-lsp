@@ -2,13 +2,14 @@
 
 A single-crate repo: language server (`sie-lsp` binary) and CLI (`sie` binary)
 for the [SIE 4B](../docs/spec.md) file format. The parsing layer lives in the
-sibling [`sie-parser`](../sie-parser) repo, consumed via a path-patched
-crates.io dep — see [Local development](#local-development) below.
+sibling [`sie-parser`](../sie-parser) repo, consumed as a normal crates.io
+dep — see [Local development](#local-development) below for working against
+an unpublished local copy.
 
 ## Layout
 
 ```
-Cargo.toml           package manifest with [patch.crates-io] for local sie-parser
+Cargo.toml           package manifest (sie-parser pulled from crates.io)
 justfile             build/test/install recipes
 src/
 ├── lib.rs              re-exports SemanticToken / TOKEN_TYPES / semantic_tokens
@@ -19,20 +20,24 @@ src/
 
 ## Local development
 
-This repo depends on `sie-parser` from crates.io with a `[patch.crates-io]`
-override pointing at `../sie-parser` for local iteration. The expected layout
-on disk:
+`Cargo.toml` depends on the published `sie-parser` from crates.io. To iterate
+against a local checkout instead, drop a gitignored `.cargo/config.toml` in
+this repo with:
+
+```toml
+paths = ["../sie-parser"]
+```
+
+Cargo's [`paths` override](https://doc.rust-lang.org/cargo/reference/overriding-dependencies.html#paths-overrides)
+swaps in the local copy whenever its name + semver match the registry
+version, so nothing needs to change in `Cargo.toml` and `cargo publish`
+keeps working. The expected sibling layout:
 
 ```
 sie/
 ├── sie-parser/   (sibling repo — github.com/t4t5/sie-parser)
 └── sie-lsp/      (this repo)
 ```
-
-If you only have this repo cloned, comment out the `[patch.crates-io]`
-section in `Cargo.toml` to fall back to the published crate. Before publishing
-a release, the patch should be commented out so `cargo publish` resolves
-the registry version.
 
 ## Load-bearing design decisions
 
