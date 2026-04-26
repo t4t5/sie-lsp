@@ -81,17 +81,3 @@ just test       # all unit + integration tests
 just run path/to/file.se
 just lsp        # run the LSP on stdio for manual debugging
 ```
-
-Local development uses a `[patch.crates-io]` override in `Cargo.toml`
-that points `sie-parser` at the sibling
-`../sie-parser` checkout. Clone both repos as siblings:
-
-```
-sie/
-├── sie-parser/
-└── sie-lsp/
-```
-
-If you only have this repo cloned, comment out the `[patch.crates-io]`
-section in `Cargo.toml` to fall back to the published `sie-parser` on
-crates.io.
