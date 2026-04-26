@@ -54,6 +54,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
+name = "baskontoplan"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "12140ff32d3665748d1dc108f4ddd331ee20801ebb1c99be89323a17531bb224"
+
+[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -807,6 +813,7 @@ dependencies = [
 name = "sie-lsp"
 version = "0.1.0"
 dependencies = [
+ "baskontoplan",
  "serde_json",
  "sie-parser",
  "tokio",

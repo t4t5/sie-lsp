@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
 
+use baskontoplan::{Konto, Kontoplan};
 use sie_lsp::{semantic_tokens, SemanticTokenKind, TOKEN_TYPES};
 use sie_parser::{
     all_labels, label_info, offset_to_line_col, parse, FieldKind, Item, ParseOutput, Severity,
@@ -133,6 +134,90 @@ fn hover_markdown(label: &str) -> Option<String> {
         "### {}\n\n```\n{}\n```\n\n{}",
         spec.label, spec.format, spec.description
     ))
+}
+
+/// Locate the field under `offset`, descending into `#VER` children when
+/// applicable. Returns the owning item and the 0-based field index.
+fn find_field_at_offset<'a>(items: &'a [Item], offset: usize) -> Option<(&'a Item, usize)> {
+    for item in items {
+        if offset < item.span.byte_offset || offset >= item.span.end() {
+            continue;
+        }
+        if let Some(child) = find_field_at_offset(&item.children, offset) {
+            return Some(child);
+        }
+        for (i, f) in item.fields.iter().enumerate() {
+            if offset >= f.span.byte_offset && offset < f.span.end() {
+                return Some((item, i));
+            }
+        }
+    }
+    None
+}
+
+/// True if the field at `(label, field_index)` carries a SIE account number.
+/// Identified by `FieldKind::Integer` plus the canonical field names used
+/// across all account-bearing labels in `labels.rs` (`account_no`, `account`).
+fn field_is_account_no(label: &str, field_index: usize) -> bool {
+    let Some(spec) = label_info(label) else {
+        return false;
+    };
+    let Some(fspec) = spec.fields.get(field_index) else {
+        return false;
+    };
+    matches!(fspec.kind, FieldKind::Integer)
+        && (fspec.name == "account_no" || fspec.name == "account")
+}
+
+/// First `#KONTO` declaration in `items` matching `no`, if any. Top-level
+/// only — `#KONTO` never appears inside `#VER`.
+fn local_account_name<'a>(items: &'a [Item], no: u32) -> Option<&'a str> {
+    for item in items {
+        if !item.label.eq_ignore_ascii_case("#KONTO") {
+            continue;
+        }
+        let no_field = item.fields.first()?.value.as_str()?;
+        if no_field.parse::<u32>().ok() != Some(no) {
+            continue;
+        }
+        return item.fields.get(1)?.value.as_str();
+    }
+    None
+}
+
+fn account_hover_markdown(items: &[Item], no: u32) -> String {
+    let bas = Kontoplan::bas_2026_static();
+    let local = local_account_name(items, no);
+    let bas_name = bas.name(no);
+    let konto = Konto::new(no);
+    let group = konto.group();
+    let group_name = bas.group_name(group);
+
+    let primary = local.or(bas_name);
+    let mut md = String::new();
+    match primary {
+        Some(name) => md.push_str(&format!("### {no} — {name}\n\n")),
+        None => md.push_str(&format!("### {no}\n\n")),
+    }
+
+    match (local, bas_name) {
+        (Some(local), Some(bas)) if local != bas => {
+            md.push_str(&format!("From `#KONTO` in this file. BAS 2026: *{bas}*.\n\n"));
+        }
+        (Some(_), _) => md.push_str("From `#KONTO` in this file.\n\n"),
+        (None, Some(_)) => md.push_str("From BAS 2026.\n\n"),
+        (None, None) => md.push_str("Not declared in this file and not part of BAS 2026.\n\n"),
+    }
+
+    if let Some(g) = group_name {
+        md.push_str(&format!("**Kontogrupp {group}** — {g}\n\n"));
+    }
+    if konto.is_balance_sheet() {
+        md.push_str(&format!("Class {} · balansräkning\n", konto.class()));
+    } else if konto.is_income_statement() {
+        md.push_str(&format!("Class {} · resultaträkning\n", konto.class()));
+    }
+    md
 }
 
 fn label_completion_items() -> Vec<CompletionItem> {
@@ -411,6 +496,23 @@ impl LanguageServer for Backend {
 
         let offset = position_to_offset(&text, pos.line, pos.character);
         let out = parse(&text);
+
+        if let Some((item, field_index)) = find_field_at_offset(&out.items, offset)
+            && field_is_account_no(&item.label, field_index)
+            && let Some(value) = item.fields[field_index].value.as_str()
+            && let Ok(no) = value.parse::<u32>()
+        {
+            let md = account_hover_markdown(&out.items, no);
+            let span = item.fields[field_index].span;
+            return Ok(Some(Hover {
+                contents: HoverContents::Markup(MarkupContent {
+                    kind: MarkupKind::Markdown,
+                    value: md,
+                }),
+                range: Some(span_to_range(&text, span.byte_offset, span.byte_len)),
+            }));
+        }
+
         let Some(item) = find_label_at_offset(&out.items, offset) else {
             return Ok(None);
         };
@@ -469,4 +571,84 @@ async fn main() {
     let stdout = tokio::io::stdout();
     let (service, socket) = LspService::new(Backend::new);
     Server::new(stdin, stdout, socket).serve(service).await;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn offset_of(text: &str, needle: &str) -> usize {
+        text.find(needle).expect("needle not in text")
+    }
+
+    #[test]
+    fn account_hover_uses_bas_when_no_local_konto() {
+        let src = "#FLAGGA 0\n#VER A 1 20240101 \"x\" {\n#TRANS 1930 {} -100\n}\n";
+        let out = parse(src);
+        let offset = offset_of(src, "1930");
+        let (item, idx) = find_field_at_offset(&out.items, offset).unwrap();
+        assert_eq!(item.label, "#TRANS");
+        assert_eq!(idx, 0);
+        assert!(field_is_account_no(&item.label, idx));
+
+        let md = account_hover_markdown(&out.items, 1930);
+        assert!(md.contains("1930"), "missing account number: {md}");
+        assert!(md.contains("Företagskonto"), "missing BAS name: {md}");
+        assert!(md.contains("Kontogrupp 19"), "missing kontogrupp: {md}");
+        assert!(md.contains("balansräkning"), "missing class info: {md}");
+        assert!(md.contains("BAS 2026"));
+    }
+
+    #[test]
+    fn account_hover_prefers_local_konto_name() {
+        let src = "#FLAGGA 0\n#KONTO 1930 \"Bank — Handelsbanken\"\n";
+        let out = parse(src);
+        let md = account_hover_markdown(&out.items, 1930);
+        assert!(md.contains("Bank — Handelsbanken"), "missing local name: {md}");
+        assert!(md.contains("Företagskonto"), "should still mention BAS name: {md}");
+        assert!(md.contains("From `#KONTO` in this file"));
+    }
+
+    #[test]
+    fn account_hover_for_unknown_account_says_so() {
+        let src = "#FLAGGA 0\n#KONTO 9999 \"Custom\"\n";
+        let out = parse(src);
+        let md = account_hover_markdown(&out.items, 4242);
+        assert!(md.contains("4242"));
+        assert!(md.contains("Not declared in this file and not part of BAS 2026"));
+    }
+
+    #[test]
+    fn field_at_offset_descends_into_ver_children() {
+        let src = "#FLAGGA 0\n#VER A 1 20240101 \"x\" {\n#TRANS 2440 {} 100\n}\n";
+        let out = parse(src);
+        let offset = offset_of(src, "2440");
+        let (item, idx) = find_field_at_offset(&out.items, offset).unwrap();
+        assert_eq!(item.label, "#TRANS");
+        assert_eq!(idx, 0);
+    }
+
+    #[test]
+    fn label_field_indices_are_recognised_for_account() {
+        // #IB year_no account ...   → account is index 1
+        let src = "#FLAGGA 0\n#IB 0 1930 100\n";
+        let out = parse(src);
+        let offset = offset_of(src, "1930");
+        let (item, idx) = find_field_at_offset(&out.items, offset).unwrap();
+        assert_eq!(item.label, "#IB");
+        assert_eq!(idx, 1);
+        assert!(field_is_account_no(&item.label, idx));
+    }
+
+    #[test]
+    fn non_account_integer_field_is_not_account() {
+        // #IB year_no account balance  → year_no is index 0, not an account
+        let src = "#FLAGGA 0\n#IB 0 1930 100\n";
+        let out = parse(src);
+        let offset = offset_of(src, " 0 ") + 1;
+        let (item, idx) = find_field_at_offset(&out.items, offset).unwrap();
+        assert_eq!(item.label, "#IB");
+        assert_eq!(idx, 0);
+        assert!(!field_is_account_no(&item.label, idx));
+    }
 }
